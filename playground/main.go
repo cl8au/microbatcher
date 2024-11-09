@@ -29,89 +29,68 @@ func main() {
 	batcher01 := microbatcher.NewMicroBatcher("batcher01", processor, configs.NewDefaultConfig())
 	batcher02 := microbatcher.NewMicroBatcher("batcher02", processor, configs.NewDefaultConfig())
 
-	// first round
-	_ = batcher01.Start()
-	_ = batcher02.Start()
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 1000; i++ {
-			_, _ = batcher01.Submit(&types.Job[int, string]{
-				ID:   i,
-				Data: fmt.Sprintf("first round job %d", i),
-			})
+	for k := 0; k < 1; k++ {
+		startBatcher01Err := batcher01.Start()
+		if startBatcher01Err != nil {
+			slog.Error("failed to start batcher01")
 		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 500; i++ {
-			_, _ = batcher02.Submit(&types.Job[int, string]{
-				ID:   i,
-				Data: fmt.Sprintf("first round job %d", i),
-			})
+		startBatcher02Err := batcher02.Start()
+		if startBatcher02Err != nil {
+			slog.Error("failed to start batcher02")
 		}
-	}()
 
-	wg.Wait()
+		var wg sync.WaitGroup
 
-	_ = batcher01.Shutdown()
-	_ = batcher02.Shutdown()
+		// NOTE: expect some failures of submit since the queue is too small and job size is too large
+		// This is desired just for testing purpose.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 1000; i++ {
+				_, submitErr := batcher01.Submit(&types.Job[int, string]{
+					ID:   i,
+					Data: fmt.Sprintf("round %d - job %d", k, i),
+				})
+				if submitErr != nil {
+					slog.Error(fmt.Sprintf("round %d - failed to submit job %d", k, i))
+				}
+			}
+		}()
 
-	results := batcher01.GetCurrentResults()
-	for _, result := range results {
-		slog.Info(fmt.Sprintf("first round batch01 result: %s with data: %s\n", result, result.Data))
-	}
-	slog.Info(fmt.Sprintf("first round batch01 result size: %d\n", len(results)))
-	results = batcher02.GetCurrentResults()
-	for _, result := range results {
-		slog.Info(fmt.Sprintf("first round batch02 result: %s with data: %s\n", result, result.Data))
-	}
-	slog.Info(fmt.Sprintf("first round batch02 result size: %d\n", len(results)))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 500; i++ {
+				_, submitErr := batcher02.Submit(&types.Job[int, string]{
+					ID:   i,
+					Data: fmt.Sprintf("round %d - job %d", k, i),
+				})
+				if submitErr != nil {
+					slog.Error(fmt.Sprintf("round %d - failed to submit job %d", k, i))
+				}
+			}
+		}()
 
-	// second round
-	_ = batcher01.Start()
-	_ = batcher02.Start()
+		wg.Wait()
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 100; i++ {
-			_, _ = batcher01.Submit(&types.Job[int, string]{
-				ID:   i,
-				Data: fmt.Sprintf("second round job %d", i),
-			})
+		shutdownBatcher01Err := batcher01.Shutdown()
+		if shutdownBatcher01Err != nil {
+			slog.Error("failed to start batcher01")
 		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 50; i++ {
-			_, _ = batcher02.Submit(&types.Job[int, string]{
-				ID:   i,
-				Data: fmt.Sprintf("second round job %d", i),
-			})
+		shutdownBatcher02Err := batcher02.Shutdown()
+		if shutdownBatcher02Err != nil {
+			slog.Error("failed to start batcher02")
 		}
-	}()
 
-	wg.Wait()
-
-	_ = batcher01.Shutdown()
-	_ = batcher02.Shutdown()
-
-	results = batcher01.GetCurrentResults()
-	for _, result := range results {
-		slog.Info(fmt.Sprintf("second round batch01 result: %s with data: %s\n", result, result.Data))
+		results := batcher01.GetCurrentResults()
+		for _, result := range results {
+			slog.Info(fmt.Sprintf("round %d - batch01 result: %s with data: %s\n", k, result, result.Data))
+		}
+		slog.Info(fmt.Sprintf("round %d - batch01 result size: %d\n", k, len(results)))
+		results = batcher02.GetCurrentResults()
+		for _, result := range results {
+			slog.Info(fmt.Sprintf("round %d - batch02 result: %s with data: %s\n", k, result, result.Data))
+		}
+		slog.Info(fmt.Sprintf("round %d - batch02 result size: %d\n", k, len(results)))
 	}
-	slog.Info(fmt.Sprintf("second round batch01 result size: %d\n", len(results)))
-	results = batcher02.GetCurrentResults()
-	for _, result := range results {
-		slog.Info(fmt.Sprintf("second round batch02 result: %s with data: %s\n", result, result.Data))
-	}
-	slog.Info(fmt.Sprintf("second round batch02 result size: %d\n", len(results)))
 }

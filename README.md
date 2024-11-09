@@ -27,4 +27,4 @@ You can run `make` to run build which includes build, lint and tests. You also c
 
 ### Test coverage
 
-You can run `make cov-html` to generate the html version of code coverage and `open cover.html` in order to browse the details.
+You can run `make cov-html` to generate the html version of code coverage and `open cover.html` in order to browse the details. I have also committed the cover.html just to show the coverage. Please ignore `playground` folder since this is just for manual tests locally.
