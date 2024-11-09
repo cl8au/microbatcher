@@ -15,6 +15,33 @@ requirements:
 - it should provide a way to configure the batching behaviour i.e. size and frequency
 - it should expose a shutdown method which returns after all previously accepted Jobs are processed
 
+## Design
+
+- Each [batcher](https://github.com/cl8au/microbatcher/blob/main/batcher.go) is a worker which self contains the queue with batch size and timer in order to achieve micro batching processing.
+- Giving library users flexibility to spawn multiple batchers if needed but also the control of job distribution.
+- Job result and Job binding with field `ID` and generic in both Job and Job result should be able to handle multiple formats.
+- Batch frequency and batch size are configurable and treated as inputs for batcher.
+- Expose an additional method called `GetCurrentResults` which allows user to get current results at any points of time.
+- `Shutdown` drains the job queue and I decide let user to call `GetCurrentResults` in order to get results rather than `Shutdown` returns the result in order to keep the syntax consistency with `Start` method.
+- Contract of batch processor giving user flexibility to define what need to be return. Users can decide certain logic as dropping few job if needed.
+
+## High level project structure
+
+- pkg
+  - contains all the business logic modules of zendesk search application
+- vendor
+  - contains all the saved dependencies resources which have been defined in go.mod
+- go.mod
+  - module definitions with all the dependencies
+- batcher.go
+  - core logic about batcher which does micro-batch processing
+- Makefile
+  - contains set of tasks which can build, test and lint this project
+- `.golangci.yml`
+  - contains all the lint configurations
+- `.tools-versions`
+  - `asdf` languages definition file
+
 ## Local setup
 
 ### Go version
@@ -28,3 +55,7 @@ You can run `make` to run build which includes build, lint and tests. You also c
 ### Test coverage
 
 You can run `make cov-html` to generate the html version of code coverage and `open cover.html` in order to browse the details. I have also committed the cover.html just to show the coverage. Please ignore `playground` folder since this is just for manual tests locally.
+
+### Playground
+
+You can find [playground](https://github.com/cl8au/microbatcher/blob/e468f6231807020f4d6aab7aed9a307886137ee7/playground/main.go) which does some manual tests apart from test coverage.
